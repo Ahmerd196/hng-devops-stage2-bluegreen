@@ -1,0 +1,12 @@
+{
+  "name": "hng-devops-stage2-bluegreen",
+  "version": "1.0.0",
+  "description": "Blue-green deployment stage 2 app for HNG DevOps project",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}
