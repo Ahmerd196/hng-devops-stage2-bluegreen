@@ -1,8 +1,8 @@
 {
-  "name": "hng-devops-stage2-bluegreen",
+  "name": "ip-validator-app",
   "version": "1.0.0",
-  "description": "Blue-green deployment stage 2 app for HNG DevOps project",
   "main": "server.js",
+  "type": "module",
   "scripts": {
     "start": "node server.js"
   },
