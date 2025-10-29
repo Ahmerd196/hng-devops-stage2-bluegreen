@@ -6,4 +6,5 @@ app.get("/version", (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Running on port ${PORT}`));
+const HOST = "0.0.0.0"; // ✅ Important for Railway
+app.listen(PORT, HOST, () => console.log(`Running on http://${HOST}:${PORT}`));
