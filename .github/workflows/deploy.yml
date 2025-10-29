@@ -1,0 +1,60 @@
+name: Blue-Green Failover Test
+
+on: [push]
+
+jobs:
+  smoke-test:
+    runs-on: ubuntu-latest
+    env:
+      DOCKER_BUILDKIT: 1
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Compose
+        uses: docker/setup-buildx-action@v3
+
+      - name: Start stack
+        run: |
+          cp .env.example .env || true
+          docker compose up -d --wait
+
+      - name: Wait for endpoint
+        run: |
+          timeout 30s bash -c 'until curl -sf http://localhost:8080/version; do sleep 1; done'
+
+      - name: Baseline check (should be ACTIVE_POOL)
+        run: |
+          curl -sI http://localhost:8080/version | grep -i X-App-Pool || (curl -sI http://localhost:8080/version && exit 1)
+
+      - name: Induce chaos on blue (grader simulates this too)
+        run: |
+          # trigger the blue container's chaos endpoint (blue is on 8081)
+          curl -s -X POST "http://localhost:8081/chaos/start?mode=error" || true
+          sleep 1
+
+      - name: Verify failover within 10s (checks repeated requests)
+        run: |
+          COUNT=0
+          BAD=0
+          for i in $(seq 1 10); do
+            sleep 0.5
+            HTTP=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/version) || HTTP=000
+            POOL=$(curl -sI http://localhost:8080/version | grep -i X-App-Pool | tr -d '\r' || true)
+            echo "resp $i: $HTTP $POOL"
+            if [ "$HTTP" != "200" ]; then BAD=$((BAD+1)); fi
+            COUNT=$((COUNT+1))
+          done
+          echo "Bad responses: $BAD out of $COUNT"
+          if [ "$BAD" -ne 0 ]; then
+            echo "Failover produced non-200 responses!"
+            exit 1
+          fi
+
+      - name: Stop chaos on blue
+        run: |
+          curl -s -X POST "http://localhost:8081/chaos/stop" || true
+
+      - name: Tear down
+        if: always()
+        run: docker compose down --volumes

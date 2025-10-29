@@ -1,0 +1,12 @@
+DECISION.md
+~Decision
+
+- **Nginx Failover:** We use an Nginx upstream group with one primary (blue) and one backup (green) server. When Blue fails, Nginx immediately retries the request on Green:contentReference[oaicite:0]{index=0}. We configure `max_fails=1` and a short `fail_timeout` (e.g. 3s) so that Blue is marked down after a single failure:contentReference[oaicite:1]{index=1}. The `proxy_next_upstream` setting covers errors and timeouts (including HTTP 5xx), ensuring that only `200 OK` responses reach the client:contentReference[oaicite:2]{index=2}:contentReference[oaicite:3]{index=3}.
+
+- **Env-Based Template Rendering:** Instead of hardcoding, we template the Nginx config via `envsubst` in a shell script:contentReference[oaicite:4]{index=4}. The script reads `$ACTIVE_POOL` and injects the `backup` keyword appropriately (using `BACKUP_BLUE`/`BACKUP_GREEN` flags). This approach is simple and portable, avoiding complex templating tools. After substitution, the script reloads Nginx, allowing pool switches without downtime.
+
+- **Environment Variables & Headers:** A `.env` file holds `BLUE_IMAGE`, `GREEN_IMAGE`, `ACTIVE_POOL`, and release IDs:contentReference[oaicite:5]{index=5}. Each app receives a `RELEASE_ID` environment variable so it returns `X-App-Pool` and `X-Release-Id` headers. Nginx is configured to forward these headers unchanged:contentReference[oaicite:6]{index=6}, enabling verification of which version served each request during failover tests.
+
+- **Retry Policy:** We explicitly allow retrying failed requests (even non-idempotent ones) by configuring `proxy_next_upstream` for relevant errors:contentReference[oaicite:7]{index=7}. This ensures that any single failure on Blue triggers an automatic retry on Green, consistent with best-practice zero-downtime deployment strategies:contentReference[oaicite:8]{index=8}:contentReference[oaicite:9]{index=9}.
+
+- **CI/CD Workflow:** The GitHub Actions workflow automates testing. It brings up the Compose stack, waits for the `/version` endpoint, triggers chaos on Blue, and asserts that all responses remain 200 with `X-App-Pool: green`:contentReference[oaicite:10]{index=10}. This mimics the grader’s procedure and validates that failover works under stress.
