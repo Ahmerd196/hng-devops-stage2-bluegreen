@@ -1,0 +1,47 @@
+# services:
+#   nginx:
+#     image: nginx:alpine
+#     ports:
+#       - "8080:80"
+#     depends_on:
+#       - app_blue
+#       - app_green
+#     environment:
+#       ACTIVE_POOL: ${ACTIVE_POOL}
+#     volumes:
+#       - ./nginx.template.conf:/etc/nginx/nginx.template.conf:ro
+#       - ./generate-nginx.sh:/usr/local/bin/generate-nginx.sh:ro
+#     command: /bin/sh -c "apk add --no-cache gettext > /dev/null 2>&1 || true && /usr/local/bin/generate-nginx.sh && nginx -g 'daemon off;'"
+#   app_blue:
+#     image: ${BLUE_IMAGE}
+#     environment:
+#       - RELEASE_ID=${RELEASE_ID_BLUE}
+#     ports:
+#       - "8081:3000"  # map host 8081 → container 3000
+
+#   app_green:
+#     image: ${GREEN_IMAGE}
+#     environment:
+#       - RELEASE_ID=${RELEASE_ID_GREEN}
+#     ports:
+#       - "8082:3000"  # map host 8082 → container 3000
+version: '3.9'
+
+services:
+  nginx:
+    build: ./nginx
+    ports:
+      - "8080:80"
+    depends_on:
+      - blue
+      - green
+
+  blue:
+    build: ./blue
+    ports:
+      - "8081:8080"
+
+  green:
+    build: ./green
+    ports:
+      - "8082:8080"
